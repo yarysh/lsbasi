@@ -1,6 +1,6 @@
 import operator
 
-from token import Token, INTEGER, OP, EOF
+from token import Token, INTEGER, PLUS, MINUS, EOF
 
 
 OP_FUNCS = {
@@ -10,34 +10,54 @@ OP_FUNCS = {
 
 
 class Interpreter:
+    current_char: str
+
     def __init__(self, text):
         self.text = text.replace(' ', '')
         self.pos = 0
         self.current_token = None
+        self.current_char = self.text[self.pos]
 
     def error(self):
-        raise Exception('Error parsing input')
+        raise Exception('Invalid syntax')
+
+    def advance(self):
+        self.pos += 1
+        if self.pos > len(self.text) - 1:
+            self.current_char = None
+        else:
+            self.current_char = self.text[self.pos]
+
+    def skip_whitespace(self):
+        while self.current_char is not None and self.current_char.isspace():
+            self.advance()
+
+    def integer(self):
+        result = ''
+        while self.current_char is not None and self.current_char.isdigit():
+            result += self.current_char
+            self.advance()
+        return int(result)
 
     def get_next_token(self):
-        text = self.text
-        if self.pos > len(text) - 1:
-            return Token(EOF, None)
+        while self.current_char is not None:
+            if self.current_char.isspace():
+                self.skip_whitespace()
+                continue
 
-        current_char = text[self.pos]
-        if current_char.isdigit():
-            self.pos += 1
-            while self.pos < len(text) and text[self.pos].isdigit():
-                current_char += text[self.pos]
-                self.pos += 1
-            token = Token(INTEGER, int(current_char))
-            return token
+            if self.current_char.isdigit():
+                return Token(INTEGER, self.integer())
 
-        if current_char in ('+', '-'):
-            token = Token(OP, current_char)
-            self.pos += 1
-            return token
+            if self.current_char == '+':
+                self.advance()
+                return Token(PLUS, '+')
 
-        self.error()
+            if self.current_char == '-':
+                self.advance()
+                return Token(MINUS, '-')
+
+            self.error()
+        return Token(EOF, None)
 
     def eat(self, token_type):
         if self.current_token.type == token_type:
@@ -45,17 +65,20 @@ class Interpreter:
         else:
             self.error()
 
+    def term(self):
+        token = self.current_token
+        self.eat(INTEGER)
+        return token.value
+
     def expr(self):
         self.current_token = self.get_next_token()
-
-        left = self.current_token
-        self.eat(INTEGER)
-
-        op = self.current_token
-        self.eat(OP)
-
-        right = self.current_token
-        self.eat(INTEGER)
-
-        func = OP_FUNCS[op.value]
-        return func(left.value, right.value)
+        result = self.term()
+        while self.current_token.type in (PLUS, MINUS):
+            token = self.current_token
+            if token.type == PLUS:
+                self.eat(PLUS)
+                result = result + self.term()
+            elif token.type == MINUS:
+                self.eat(MINUS)
+                result = result - self.term()
+        return result

@@ -1,4 +1,4 @@
-INTEGER, OP, EOF = 'INTEGER', 'OP', 'EOF'
+INTEGER, PLUS, MINUS, EOF = 'INTEGER', 'PLUS', 'MINUS', 'EOF'
 
 
 class Token:
